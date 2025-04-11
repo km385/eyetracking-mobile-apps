@@ -1,0 +1,9 @@
+# Ignore the data folder (raw data)
+data/
+
+# Ignore the data-clean folder (processed data)
+data-clean/
+
+# Ignore .Rproj user settings
+.Rproj.user/
+
