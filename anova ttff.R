@@ -3,6 +3,44 @@ glimpse(dane_aoi)
 head(dane_aoi)
 str(dane_aoi)
 
+library(tidyverse)
+### !!!!!!!!! WYNIKI W KOMENTARZACH DLA DANYCH Z AOI 2 I 3. GDY ZROBIONO TYLKO DLA AOI
+### LICZBY SA INNE ALE WYNIKI I WNIOSKI NADAL TAKIE SAME
+
+
+
+aggr_aoi <- read_csv("data-clean/combined_aoi.csv", skip = 7)
+
+# Krok 1: Przenieś pierwszy wiersz jako kolumny
+colnames(aggr_aoi) <- aggr_aoi[1, ]
+
+# Krok 2: Usuń pierwszy wiersz (nagłówek w danych)
+aggr_aoi <- aggr_aoi[-1, ]
+
+
+# Wczytanie i przygotowanie danych
+dane_aoi <- aggr_aoi %>%
+  filter(Type == "Static AOI", Label == "AOI 1") %>%
+  select(
+    app_task = `Parent Label`,
+    zadanie = `Parent Label`,
+    czas_fiksacji = `Dwell time (fixation, ms)`,
+    liczba_rewizyt = `Revisit count (fixation dwells)`,
+    ttff = `TTFF (AOI)`
+  ) %>%
+  separate(
+    col = app_task,
+    into = c("aplikacja", "nr_zadania"),
+    sep = "(?<=[A-Za-z])(?=[0-9])",
+    remove = FALSE
+  ) %>%
+  mutate(
+    aplikacja = as.factor(toupper(aplikacja)),
+    zadanie = as.factor(nr_zadania),
+    across(c(czas_fiksacji, liczba_rewizyt, ttff), as.numeric)
+  )
+
+
 # Wstępna wizualizacja TTFF w zależności od aplikacji
 ggplot(dane_aoi, aes(x = aplikacja, y = ttff)) +
   geom_boxplot() +
@@ -22,7 +60,6 @@ summary(anova_model)
 # Post-hoc do ANOVA (niewiarygodny z uwagi na brak normalności reszt)
 TukeyHSD(anova_model)
 
-library(dplyr)
 library(rstatix)
 
 # ANOVA z pakietu rstatix
@@ -67,3 +104,31 @@ ggplot(dane_aoi, aes(x = aplikacja, y = ttff, fill = aplikacja)) +
 
 library(FSA)
 dunnTest(ttff ~ aplikacja, data = dane_aoi, method = "bonferroni")
+
+
+dane_aoi %>% 
+  summarize(avg = mean(ttff))
+
+
+
+
+## wizualizacja rozkladow i normalnosci
+library(ggpubr)
+ggplot(dane_aoi, aes(x = ttff, fill = aplikacja)) +
+  geom_histogram(aes(y = ..density..), bins = 15, color = "black", alpha = 0.6, position = "identity") +
+  geom_density(alpha = 0.3) +
+  facet_wrap(~aplikacja, scales = "free") +
+  theme_minimal() +
+  labs(
+    title = "Rozkład TTFF dla każdej aplikacji",
+    x = "TTFF (ms)",
+    y = "Gęstość"
+  )
+
+
+ggqqplot(dane_aoi, x = "ttff", facet.by = "aplikacja", color = "aplikacja") +
+  labs(
+    title = "Q-Q ploty TTFF dla aplikacji",
+    x = "Teoretyczne kwantyle",
+    y = "Obserwowane kwantyle"
+  )
